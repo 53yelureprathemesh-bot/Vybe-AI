@@ -39,7 +39,7 @@ Modern IT professionals, software engineers, and desk employees spend **8 to 11+
 
 ### Why It Matters
 * **Computer Vision Syndrome (CVS):** Affects over **70% of computer workers**, causing blurred vision, dry eyes, and chronic tension headaches that degrade problem-solving efficiency.
-* **Musculoskeletal Disorders (MSDs):** Account for over **$50 Billion annually** in direct corporate healthcare expenses and lost workdays.
+* **Musculoskeletal Disorders (MSDs):** Account for over **₹4,15,000 Crore (₹4.15 Lakh Crore / $50B+) annually** in direct corporate healthcare expenses and lost workdays.
 * **Afternoon Cognitive Slump:** Studies show a **30% drop in computational problem-solving speed** and a **35% increase in syntax errors** when employees work without rhythmic micro-breaks.
 * **Talent Attrition:** Chronic physical discomfort and burnout rank among the top 3 drivers of voluntary technical turnover.
 
@@ -123,14 +123,14 @@ VYBE AI replaces rigid, intrusive timer software with an **autonomous, proactive
 |                            QUANTIFIED BUSINESS IMPACT                             |
 +--------------------------+-----------------------------+--------------------------+
 |  Productivity Increase   |  Healthcare Cost Avoidance  |   Turnover Reduction     |
-|          +12%            |      $1,800 / Employee      |          -18%            |
+|          +12%            |    ₹1,50,000 / Employee     |          -18%            |
 | Sustained daily output   | Saved in MSD & RSI claims   | Less developer burnout   |
 +--------------------------+-----------------------------+--------------------------+
 ```
 
 * **+12% Sustained Daily Output:** By eliminating the universal 3:00 PM cognitive crash through timed micro-oxygenation and optical rests, employees maintain steady problem-solving velocity.
-* **$1,800 Saved per Employee Annually:** Measurably reduces corporate health insurance payouts for ergonomic injuries, repetitive strain therapy, and chronic spinal treatments.
-* **-18% Burnout Attrition Reduction:** Mitigates the developer churn caused by relentless sprint fatigue. Retaining just one senior engineer saves **$50,000+** in recruitment and onboarding costs.
+* **₹1,50,000 (₹1.5 Lakh) Saved per Employee Annually:** Measurably reduces corporate health insurance payouts for ergonomic injuries, repetitive strain therapy, and chronic spinal treatments.
+* **-18% Burnout Attrition Reduction:** Mitigates the developer churn caused by relentless sprint fatigue. Retaining just one senior engineer saves **₹40,00,000+ (₹40 Lakhs / $50k)** in recruitment and onboarding costs.
 * **>85% Break Acceptance Rate:** Because VYBE is transparently private and gives users control over snooze intervals, adoption rates far exceed mandatory enterprise tools.
 
 ---
@@ -177,25 +177,25 @@ VYBE AI replaces rigid, intrusive timer software with an **autonomous, proactive
 
 ---
 
-# 09 Solution Cost (Approximate Build & Run)
+# 09 Solution Cost (Approximate Build & Run in INR)
 
 ### Estimated Build Cost (One-Time)
-| Item | Description | Cost (USD) |
-| :--- | :--- | :--- |
-| **UX & Ergonomic Architecture** | Design of 5-activity library, wireframes, and design system | $1,500 – $2,500 |
-| **Frontend & Audio Engineering** | React 18, Vite, Web Audio procedural synthesizer, Web Workers | $2,500 – $3,500 |
-| **Agentic Loop & Backend API** | FastAPI, SQLite, Gemini structured schema, Windows daemon | $2,000 – $3,000 |
-| **QA & Automated Testing** | Test suite (27 Pytest cases), security audit, and deployment | $1,000 – $1,500 |
-| **Total Estimated Build Cost** | **Complete 3-week agile sprint delivery** | **$7,000 – $10,500** |
+| Item | Description | Cost (INR / ₹) | Cost (USD) |
+| :--- | :--- | :--- | :--- |
+| **UX & Ergonomic Architecture** | Design of 5-activity library, wireframes, and design system | ₹1,25,000 – ₹2,00,000 | $1,500 – $2,500 |
+| **Frontend & Audio Engineering** | React 18, Vite, Web Audio procedural synthesizer, Web Workers | ₹2,00,000 – ₹3,00,000 | $2,500 – $3,500 |
+| **Agentic Loop & Backend API** | FastAPI, SQLite, Gemini structured schema, Windows daemon | ₹1,65,000 – ₹2,50,000 | $2,000 – $3,000 |
+| **QA & Automated Testing** | Test suite (27 Pytest cases), security audit, and deployment | ₹80,000 – ₹1,25,000 | $1,000 – $1,500 |
+| **Total Estimated Build Cost** | **Complete 3-week agile sprint delivery** | **₹5,80,000 – ₹8,75,000 (~₹6 – ₹8.5 Lakhs)** | **$7,000 – $10,500** |
 
 ### Estimated Operational Run Cost (1,000 Users)
-| Resource | Provider | Monthly Cost (USD) |
-| :--- | :--- | :--- |
-| **Edge Hosting & CDN** | Vercel Pro | $20.00 |
-| **Database Storage** | SQLite / Edge Embedded Database | $0.00 – $15.00 |
-| **LLM Inference** | Gemini 1.5 Flash (85% resolved via edge rules) | $10.00 – $25.00 |
-| **Maintenance & Security** | Routine dependency patches | $100.00 |
-| **Total Monthly Run Cost** | **~$150 / month across 1,000 users (<$0.15 / employee / month!)** |
+| Resource | Provider | Monthly Cost (INR / ₹) | Monthly Cost (USD) |
+| :--- | :--- | :--- | :--- |
+| **Edge Hosting & CDN** | Vercel Pro | ₹1,650 / month | $20.00 |
+| **Database Storage** | SQLite / Edge Embedded Database | ₹0 – ₹1,200 / month | $0.00 – $15.00 |
+| **LLM Inference** | Gemini 1.5 Flash (85% resolved via edge rules) | ₹800 – ₹2,000 / month | $10.00 – $25.00 |
+| **Maintenance & Security** | Routine dependency patches | ₹8,000 / month | $100.00 |
+| **Total Monthly Run Cost** | **~₹12,500 / month across 1,000 users (<₹12.50 / employee / month!)** | **~$150.00 / month** |
 
 ---
 

@@ -219,7 +219,7 @@ create_card(
     "3. Why It Matters",
     [
         ("Computer Vision Syndrome", "Affects over 70% of computer workers, dropping reading speed and causing frequent headaches."),
-        ("$50B+ Annual Cost", "Musculoskeletal disorders account for over $50B in direct corporate healthcare and compensation claims."),
+        ("₹4.15 Lakh Cr ($50B+) Cost", "Musculoskeletal disorders account for over ₹4.15 Lakh Crore in direct corporate healthcare and compensation claims."),
         ("30% Productivity Loss", "Fatigued developers commit 35% more syntax bugs and regressions during late afternoon hours."),
         ("Attrition & Burnout", "Chronic workplace exhaustion is among the top 3 drivers of technical talent turnover.")
     ]
@@ -354,8 +354,8 @@ add_header(slide6, "Section 07", "Business Impact: Quantified Organizational Ret
 
 kpi_cards = [
     ("📈 Sustained Daily Productivity", "+12% Output Gain", "Eliminates the standard 3:00 PM cognitive slump through timed micro-oxygenation and optical resets, sustaining peak problem-solving stamina across 8-hour shifts.", Inches(0.8), Inches(1.9)),
-    ("🩺 Healthcare Cost Avoidance", "$1,800 Saved / Employee", "Significantly lowers musculoskeletal disorder (MSD) insurance claims, ergonomic physical therapy costs, and repetitive strain injury (RSI) compensations.", Inches(6.8), Inches(1.9)),
-    ("🛡️ Reduced Voluntary Turnover", "-18% Burnout Attrition", "Decreases technical developer churn caused by relentless sprints and exhaustion. Retaining a single senior software engineer saves $50,000+ in recruiting.", Inches(0.8), Inches(4.5)),
+    ("🩺 Healthcare Cost Avoidance", "₹1,50,000 Saved / Employee", "Significantly lowers musculoskeletal disorder (MSD) insurance claims, ergonomic physical therapy costs, and repetitive strain injury (RSI) compensations annually.", Inches(6.8), Inches(1.9)),
+    ("🛡️ Reduced Voluntary Turnover", "-18% Burnout Attrition", "Decreases technical developer churn caused by relentless sprints. Retaining a single senior software engineer saves ₹40,00,000+ ($50k) in recruitment costs.", Inches(0.8), Inches(4.5)),
     ("⚡ User Participation & Trust", ">85% Break Acceptance", "Because VYBE enforces a strict zero-surveillance policy, employees actually embrace and use it daily, unlike mandatory corporate surveillance tools.", Inches(6.8), Inches(4.5))
 ]
 
@@ -432,11 +432,11 @@ create_card(
     slide8, Inches(0.8), Inches(1.9), Inches(5.7), Inches(5.0),
     "Estimated Build Cost (One-Time)",
     [
-        ("Architecture & UX Design", "$1,500 – $2,500: Ergonomic activity library creation, wireframes, and branding."),
-        ("Frontend & Audio Engineering", "$2,500 – $3,500: React 18, Web Workers, Web Audio synthesizer, and Recharts."),
-        ("Agentic Engine & API Backend", "$2,000 – $3,000: FastAPI, SQLite, Gemini structured schema, and Windows daemon."),
-        ("Testing & Quality Assurance", "$1,000 – $1,500: Automated test suite (27 unit/integration tests) and deployment."),
-        ("Total Estimated Build Cost", "$7,000 – $10,500 (Can be completed in a 3-week agile engineering sprint).")
+        ("Architecture & UX Design", "₹1,25,000 – ₹2,00,000: Ergonomic activity library creation, wireframes, and branding."),
+        ("Frontend & Audio Engineering", "₹2,00,000 – ₹3,00,000: React 18, Web Workers, Web Audio synthesizer, and Recharts."),
+        ("Agentic Engine & API Backend", "₹1,65,000 – ₹2,50,000: FastAPI, SQLite, Gemini structured schema, and Windows daemon."),
+        ("Testing & Quality Assurance", "₹80,000 – ₹1,25,000: Automated test suite (27 unit/integration tests) and deployment."),
+        ("Total Estimated Build Cost", "₹5,80,000 – ₹8,75,000 (~₹6 – ₹8.5 Lakhs in a 3-week agile engineering sprint).")
     ]
 )
 
@@ -444,11 +444,11 @@ create_card(
     slide8, Inches(6.8), Inches(1.9), Inches(5.733), Inches(5.0),
     "Estimated Monthly Run Cost (1,000 Users)",
     [
-        ("Cloud Hosting (Vercel Pro)", "$20 / month: Unlimited bandwidth, global edge distribution, and automated CI/CD."),
-        ("Database Storage (SQLite / Edge DB)", "$0 – $15 / month: Lightweight embedded storage with negligible I/O costs."),
-        ("LLM Inference (Gemini Flash)", "$10 – $25 / month: Edge fallback resolves 85% of queries locally at $0 cost."),
-        ("Maintenance & Security Patches", "$100 / month: Routine updates and dependency audits."),
-        ("Total Monthly Run Cost", "~$150 / month across 1,000 active employees (<$0.15 / user / month!).")
+        ("Cloud Hosting (Vercel Pro)", "₹1,650 / month ($20/mo): Unlimited bandwidth, global edge distribution & CI/CD."),
+        ("Database Storage (SQLite / Edge DB)", "₹0 – ₹1,200 / month: Lightweight embedded storage with negligible I/O costs."),
+        ("LLM Inference (Gemini Flash)", "₹800 – ₹2,000 / month: Edge fallback resolves 85% of queries locally at ₹0 cost."),
+        ("Maintenance & Security Patches", "₹8,000 / month: Routine updates, monitoring, and dependency audits."),
+        ("Total Monthly Run Cost", "~₹12,500 / month across 1,000 active employees (<₹12.50 / employee / month!).")
     ]
 )
 
