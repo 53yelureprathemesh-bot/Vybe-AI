@@ -2,6 +2,11 @@
 
 > **"Your Work. Your Wellness. Your Rhythm."**
 
+[![Live App on Vercel](https://img.shields.io/badge/Live%20Demo-vybe--ai--five.vercel.app-14B8A6?style=for-the-badge&logo=vercel)](https://vybe-ai-five.vercel.app/)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Vybe--AI-14213D?style=for-the-badge&logo=github)](https://github.com/53yelureprathemesh-bot/Vybe-AI)
+
+🌐 **Live Production Deployment**: [https://vybe-ai-five.vercel.app/](https://vybe-ai-five.vercel.app/)
+
 VYBE AI is a modern, responsive, privacy-first workplace wellness web application designed specifically for software developers, IT professionals, remote workers, and computer desk workers.
 
 It helps employees sustain mental clarity, relieve digital eye strain, improve posture, and balance focused work sessions with science-backed micro-breaks, guided mobility, calming breathing exercises, and smart workday planning.
