@@ -9,6 +9,7 @@ import {
   ChatMessage,
   UserProfile
 } from '../types';
+import { generateChatResponse } from './chatEngine';
 
 const API_BASE = '/api';
 
@@ -72,15 +73,10 @@ export const api = {
       });
       if (res.ok) return await res.json();
     } catch (e) {
-      console.warn('Backend chat offline, using client assistant fallback');
+      console.warn('Backend chat offline, using client assistant analysis engine');
     }
-    return {
-      role: 'assistant',
-      content: "I recommend taking a moment to relax your eyes or stretch gently at your desk.",
-      suggested_activity_id: 'eyecare',
-      suggested_actions: [{ label: 'Start EyeCare (20s)', action: 'start_eyecare' }],
-      source: 'rule_engine'
-    };
+    const profile = await this.getMe(userId).catch(() => null);
+    return generateChatResponse(message, history, profile);
   },
 
   // 5. User Preferences

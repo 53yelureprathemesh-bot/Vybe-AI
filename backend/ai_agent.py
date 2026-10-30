@@ -101,21 +101,21 @@ class VybeAIAssistant:
         return None
 
     def _rule_based_response(self, text: str, user_id: str) -> ChatMessage:
-        """Deterministic, grounded intent detection and response generation."""
+        """Deterministic, grounded conversation analysis and intelligent recommendation generation."""
         q = text.lower()
         now_str = datetime.utcnow().strftime("%Y-%m-%d")
 
-        # Intent 1: Check completed activities / history today
-        if any(w in q for w in ["what activities", "completed today", "history", "my breaks today", "did i complete"]):
+        # 1. Check completed activities / history today
+        if any(w in q for w in ["what activities", "completed today", "history", "my breaks today", "did i complete", "my stats"]):
             history = get_activity_history(user_id, limit=20)
             today_recs = [h for h in history if h["completed_at"].startswith(now_str)]
             
             if not today_recs:
                 return ChatMessage(
                     role="assistant",
-                    content="You haven't logged any completed wellness activities yet today. How about kicking off with a quick 20-second EyeCare break or 1-minute MindReset?",
+                    content="You haven't logged any completed wellness activities yet today. How about kicking off with a quick 20-second EyeCare break or 1-minute MindReset to build your daily streak?",
                     suggested_activity_id="eyecare",
-                    suggested_actions=[{"label": "Start EyeCare", "action": "start_eyecare"}],
+                    suggested_actions=[{"label": "Start EyeCare (20s)", "action": "start_eyecare"}],
                     source="rule_engine"
                 )
             
@@ -125,22 +125,81 @@ class VybeAIAssistant:
             
             return ChatMessage(
                 role="assistant",
-                content=f"Today you've completed {len(today_recs)} wellness sessions totaling approximately {total_min} minutes! Recent activities include: {act_names}. Keep up this balanced rhythm!",
+                content=f"📊 Great progress today! You've completed {len(today_recs)} wellness sessions totaling approximately {total_min} minutes. Recent activities include: {act_names}. Keep up this balanced rhythm!",
                 suggested_actions=[{"label": "View Journey Analytics", "action": "navigate_journey"}],
                 source="rule_engine"
             )
 
-        # Intent 2: Stressed / Anxious / Overwhelmed
-        if any(w in q for w in ["stress", "anxious", "overwhelm", "frustrated", "pressure"]):
+        # 2. Greetings & Casual Openers
+        if re.search(r"^(hi|hello|hey|good morning|good afternoon|good evening|who are you|how are you|help)\b", q.strip()):
             return ChatMessage(
                 role="assistant",
-                content="Work tension can sneak up quickly. Let's do a 1-minute MindReset breathing pause together. No forced breath-holding—just calm, natural cadence to reset your nervous system.",
-                suggested_activity_id="mindreset",
-                suggested_actions=[{"label": "Start MindReset (1m)", "action": "start_mindreset"}],
+                content="Hello! 👋 I'm VYBE, your workplace wellness companion.\n\nI actively read your messages, analyze your physical and cognitive fatigue, and suggest what's best for your workday.\n\nHow is your body and mind feeling right now?\n• \"My shoulders and neck are stiff\"\n• \"My eyes feel strained from staring at code\"\n• \"I'm feeling stressed by a deadline\"\n• \"I only have 2 minutes before my next meeting\"",
+                suggested_actions=[
+                  {"label": "20s EyeCare", "action": "start_eyecare"},
+                  {"label": "2m Desk Yoga", "action": "start_deskyoga"},
+                  {"label": "1m Mind Reset", "action": "start_mindreset"}
+                ],
                 source="rule_engine"
             )
 
-        # Intent 3: Very short availability (2 minutes or less)
+        # 3. Eye Strain / Screen Fatigue
+        if any(w in q for w in ["eye", "eyes", "screen", "blur", "vision", "staring", "headache", "monitor", "glare"]):
+            return ChatMessage(
+                role="assistant",
+                content="🔍 **Conversation Analysis: Optical Fatigue & Screen Strain**\n\nWhen concentrating on code or high-contrast screens, your natural blink rate drops from 15 times/minute to under 5. This causes tear film evaporation, dry eyes, and ciliary lens muscle fatigue.\n\n💡 **Best Recommendation**:\nThe **20-20-20 EyeCare Protocol** (20 seconds). Shift your gaze to an object at least 20 feet away for 20 seconds so your optical muscles can fully decompress.",
+                suggested_activity_id="eyecare",
+                suggested_actions=[
+                    {"label": "Start EyeCare (20s)", "action": "start_eyecare"},
+                    {"label": "Grab Water (HydrateMate)", "action": "start_hydratemate"}
+                ],
+                source="rule_engine"
+            )
+
+        # 4. Neck, Shoulder, Upper Body Stiffness / Desk Exercises
+        if any(w in q for w in ["neck", "shoulder", "stretch", "posture", "hunch", "slouch", "stiff", "desk exercise", "back"]):
+            return ChatMessage(
+                role="assistant",
+                content="🔍 **Conversation Analysis: Upper Body & Cervical Strain**\n\nLeaning forward toward your monitor multiplies gravitational strain on your cervical spine up to 40 lbs, causing trapezius and shoulder knots.\n\n💡 **Best Recommendation**:\n**Seated Desk Yoga (2 minutes)**. A gentle series of shoulder rolls, neck releases, and seated spinal twists you can do without leaving your chair.",
+                suggested_activity_id="deskyoga",
+                suggested_actions=[{"label": "Start Desk Yoga (2m)", "action": "start_deskyoga"}],
+                source="rule_engine"
+            )
+
+        # 5. Wrist, Hand & Typing Pain
+        if any(w in q for w in ["wrist", "hand", "finger", "typing", "mouse", "carpal", "rsi"]):
+            return ChatMessage(
+                role="assistant",
+                content="🔍 **Conversation Analysis: Repetitive Typing / Ergonomic Strain**\n\nContinuous keystrokes and trackpad friction cause micro-friction in the flexor tendons of the carpal tunnel.\n\n💡 **Best Recommendation**:\n**Desk Yoga Wrist Mobility (2 minutes)** to restore synovial fluid circulation and relieve tendon stiffness.",
+                suggested_activity_id="deskyoga",
+                suggested_actions=[{"label": "Start Desk Yoga (2m)", "action": "start_deskyoga"}],
+                source="rule_engine"
+            )
+
+        # 6. Stress / Anxiety / Overwhelmed
+        if any(w in q for w in ["stress", "anxious", "overwhelm", "frustrated", "pressure", "deadline", "panic"]):
+            return ChatMessage(
+                role="assistant",
+                content="🔍 **Conversation Analysis: Sympathetic Nervous System Overdrive**\n\nWork pressure and difficult bugs activate shallow breathing and elevated heart rate.\n\n💡 **Best Recommendation**:\n**Mind Reset (1 minute)** with guided 4-7-8 breathing. This stimulates the vagus nerve, sending calming signals to your prefrontal cortex in 60 seconds.",
+                suggested_activity_id="mindreset",
+                suggested_actions=[{"label": "Start Mind Reset (1m)", "action": "start_mindreset"}],
+                source="rule_engine"
+            )
+
+        # 7. Low Energy / Sleepy / Fatigue
+        if any(w in q for w in ["tired", "exhausted", "sleepy", "low energy", "power nap", "nap", "fatigue"]):
+            return ChatMessage(
+                role="assistant",
+                content="🔍 **Conversation Analysis: Energy Dip & Static Circulation**\n\nLong sitting spells decrease venous blood flow to the brain, producing afternoon drowsiness.\n\n💡 **Best Recommendation**:\nA brisk **5-Minute Walk Break** to stimulate lower-limb circulation, or a quick hydration checkpoint with **HydrateMate**.",
+                suggested_activity_id="walkbreak",
+                suggested_actions=[
+                    {"label": "Start WalkBreak (5m)", "action": "start_walkbreak"},
+                    {"label": "HydrateMate (1m)", "action": "start_hydratemate"}
+                ],
+                source="rule_engine"
+            )
+
+        # 8. Very short availability (2 minutes or less)
         if any(w in q for w in ["two minutes", "2 minutes", "2 min", "quick break", "little time", "meeting in"]):
             return ChatMessage(
                 role="assistant",
@@ -153,30 +212,7 @@ class VybeAIAssistant:
                 source="rule_engine"
             )
 
-        # Intent 4: Desk exercises / Stretching / Stiff muscles
-        if any(w in q for w in ["desk exercise", "stretch", "posture", "shoulder", "neck", "wrist", "back"]):
-            return ChatMessage(
-                role="assistant",
-                content="DeskYoga provides gentle, ergonomic seated movements designed specifically for desk workers: shoulder rolls, neck releases, and wrist mobility.",
-                suggested_activity_id="deskyoga",
-                suggested_actions=[{"label": "Start DeskYoga (2m)", "action": "start_deskyoga"}],
-                source="rule_engine"
-            )
-
-        # Intent 5: Working for hours / Continuous screen session
-        if any(w in q for w in ["two hours", "2 hours", "long time", "screen", "eyes hurt", "staring at", "headache"]):
-            return ChatMessage(
-                role="assistant",
-                content="After continuous focus, your ciliary eye muscles need a break. Try the 20-20-20 EyeCare pause: look 20 feet away for 20 seconds and let your gaze soften.",
-                suggested_activity_id="eyecare",
-                suggested_actions=[
-                    {"label": "Start EyeCare (20s)", "action": "start_eyecare"},
-                    {"label": "Grab Water (HydrateMate)", "action": "start_hydratemate"}
-                ],
-                source="rule_engine"
-            )
-
-        # Intent 6: Dislike walking / alternative requested
+        # 9. Dislike walking / alternative requested
         if any(w in q for w in ["don't want to walk", "dont want to walk", "no walking", "another option", "different activity"]):
             return ChatMessage(
                 role="assistant",
@@ -189,7 +225,7 @@ class VybeAIAssistant:
                 source="rule_engine"
             )
 
-        # Intent 7: Break planning / Schedule assistance
+        # 10. Break planning / Schedule assistance
         if any(w in q for w in ["plan breaks", "schedule", "workday", "break planner", "rest of my day"]):
             return ChatMessage(
                 role="assistant",
@@ -198,24 +234,11 @@ class VybeAIAssistant:
                 source="rule_engine"
             )
 
-        # Intent 8: Tired / Low energy / Power nap
-        if any(w in q for w in ["tired", "exhausted", "sleepy", "low energy", "power nap", "nap"]):
-            return ChatMessage(
-                role="assistant",
-                content="When energy dips, a quick 5-minute WalkBreak or a glass of water via HydrateMate can boost blood flow. If workplace policy and schedule allow, a 10-minute PowerNap is also available.",
-                suggested_activity_id="walkbreak",
-                suggested_actions=[
-                    {"label": "Start WalkBreak (5m)", "action": "start_walkbreak"},
-                    {"label": "HydrateMate (1m)", "action": "start_hydratemate"}
-                ],
-                source="rule_engine"
-            )
-
-        # Intent 9: Thirsty / Water
+        # 11. Thirsty / Water
         if any(w in q for w in ["water", "thirsty", "hydrate", "drink"]):
             return ChatMessage(
                 role="assistant",
-                content="Hydration supports cognitive stamina and physical comfort. Take 60 seconds with HydrateMate to grab a fresh glass of water.",
+                content="🔍 **Conversation Analysis: Fluid & Electrolyte Balance**\n\nHydration supports cognitive stamina and physical comfort. Take 60 seconds with HydrateMate to grab a fresh glass of water.",
                 suggested_activity_id="hydratemate",
                 suggested_actions=[{"label": "Start HydrateMate (1m)", "action": "start_hydratemate"}],
                 source="rule_engine"
@@ -224,11 +247,12 @@ class VybeAIAssistant:
         # Default fallback
         return ChatMessage(
             role="assistant",
-            content="I'm here to support your workday rhythm. Whether you need a 20-second eye rest, a 2-minute seated stretch, or help planning breaks, just let me know what fits your schedule best right now.",
+            content=f"🔍 **Conversation Analysis & Recommendation**\n\nI heard you say: \"{text}\".\n\nAs a desk worker, keeping your rhythm requires balancing optical recovery, seated posture release, and mindful breathing. Which reset would feel best for you right now?",
             suggested_activity_id="eyecare",
             suggested_actions=[
                 {"label": "Quick EyeCare (20s)", "action": "start_eyecare"},
-                {"label": "DeskYoga (2m)", "action": "start_deskyoga"}
+                {"label": "DeskYoga (2m)", "action": "start_deskyoga"},
+                {"label": "MindReset (1m)", "action": "start_mindreset"}
             ],
             source="rule_engine"
         )

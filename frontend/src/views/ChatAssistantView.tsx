@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage, NavSection } from '../types';
+import { ChatMessage, NavSection, UserProfile } from '../types';
 import {
   Send,
   Bot,
@@ -7,9 +7,11 @@ import {
   Sparkles,
   Play,
   RotateCcw,
-  ArrowRight,
-  ShieldCheck,
-  Cpu
+  Cpu,
+  Activity,
+  CheckCircle2,
+  Clock,
+  HeartPulse
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -22,25 +24,51 @@ export const ChatAssistantView: React.FC<ChatAssistantViewProps> = ({
   onStartActivity,
   onNavigate
 }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      content:
-        "Hello! I'm VYBE, your workplace wellness companion. Whether you've been staring at code for hours, have 2 minutes before a meeting, or feel tension in your shoulders, ask me anything and I'll find the right rhythm reset for you.",
-      source: 'rule_engine'
+  // Retrieve saved profile name
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('vybe_user_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
     }
-  ]);
+  });
+
+  const userName = profile?.name ? profile.name.split(' ')[0] : 'there';
+  const userRole = profile?.role || 'Software Engineer';
+
+  const defaultGreeting: ChatMessage = {
+    role: 'assistant',
+    content: `Hello ${userName}! 👋 I'm VYBE, your workplace wellness companion.
+
+I read your messages, analyze your physical and cognitive fatigue, and recommend the best science-backed rhythm resets for your workday.
+
+Whether you've been coding for hours, have 2 minutes before a call, or feel tension in your neck or eyes, tell me what you're experiencing!`,
+    source: 'rule_engine'
+  };
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem('vybe_chat_messages');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [defaultGreeting];
+  });
+
   const [input, setInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const samplePrompts = [
-    "I have been working for two hours. What should I do?",
-    "I have only two minutes before my next meeting.",
-    "I am feeling stressed.",
-    "Suggest a quick desk exercise.",
+    "I have been staring at code for 3 hours.",
+    "My neck and shoulders are really stiff.",
+    "I only have 2 minutes before my next meeting.",
+    "I'm feeling stressed and overwhelmed.",
+    "I'm exhausted and can't focus.",
     "I don't want to walk. Give me another option.",
-    "Help me plan breaks for the rest of my workday.",
     "What activities did I complete today?"
   ];
 
@@ -50,6 +78,9 @@ export const ChatAssistantView: React.FC<ChatAssistantViewProps> = ({
 
   useEffect(() => {
     scrollToBottom();
+    try {
+      localStorage.setItem('vybe_chat_messages', JSON.stringify(messages));
+    } catch {}
   }, [messages]);
 
   const handleSend = async (textToSend?: string) => {
@@ -58,11 +89,14 @@ export const ChatAssistantView: React.FC<ChatAssistantViewProps> = ({
 
     setInput('');
     const userMsg: ChatMessage = { role: 'user', content: query };
-    setMessages((prev) => [...prev, userMsg]);
+    const newHistory = [...messages, userMsg];
+    setMessages(newHistory);
     setLoading(true);
 
     try {
-      const resp = await api.sendChat(query, 'default_user', messages);
+      // Small natural pause for thinking simulation
+      await new Promise((r) => setTimeout(r, 400));
+      const resp = await api.sendChat(query, profile?.user_id || 'default_user', newHistory);
       setMessages((prev) => [...prev, resp]);
     } catch (e) {
       setMessages((prev) => [
@@ -89,6 +123,48 @@ export const ChatAssistantView: React.FC<ChatAssistantViewProps> = ({
     }
   };
 
+  // Helper to format markdown bold and highlight headers
+  const renderFormattedContent = (content: string) => {
+    const lines = content.split('\n');
+    return lines.map((line, lIdx) => {
+      // Check for Analysis header
+      if (line.includes('🔍 **Conversation Analysis')) {
+        return (
+          <div key={lIdx} className="my-2 p-2.5 rounded-xl bg-vybe-mint/40 border border-vybe-teal/20 text-vybe-navy font-medium text-[11px] flex items-center gap-2">
+            <HeartPulse className="w-4 h-4 text-vybe-teal shrink-0" />
+            <span>{line.replace(/🔍|\*\*/g, '').trim()}</span>
+          </div>
+        );
+      }
+      // Check for Recommendation header
+      if (line.includes('💡 **Best Recommendation')) {
+        return (
+          <div key={lIdx} className="my-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-semibold text-[11px] flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{line.replace(/💡|\*\*/g, '').trim()}</span>
+          </div>
+        );
+      }
+
+      // Format bold spans
+      const parts = line.split(/(\*\*.*?\*\*)/g);
+      return (
+        <div key={lIdx} className={line.trim() === '' ? 'h-2' : 'leading-relaxed'}>
+          {parts.map((p, pIdx) => {
+            if (p.startsWith('**') && p.endsWith('**')) {
+              return (
+                <strong key={pIdx} className="font-bold text-vybe-navy">
+                  {p.slice(2, -2)}
+                </strong>
+              );
+            }
+            return <span key={pIdx}>{p}</span>;
+          })}
+        </div>
+      );
+    });
+  };
+
   return (
     <div className="max-w-4xl mx-auto h-[calc(100vh-140px)] flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in">
       {/* Header */}
@@ -100,27 +176,25 @@ export const ChatAssistantView: React.FC<ChatAssistantViewProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-extrabold text-vybe-navy">Talk to VYBE</h2>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-vybe-mint text-vybe-navy">
-                Assistant
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Rhythm Analyzer Active
               </span>
             </div>
             <p className="text-[11px] text-slate-500 font-medium">
-              Natural language wellness advice grounded in your approved library & database
+              Personalized wellness companion for <strong className="text-vybe-navy">{userName}</strong> ({userRole})
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() =>
-              setMessages([
-                {
-                  role: 'assistant',
-                  content: "Conversation refreshed. How can I assist your workday rhythm right now?",
-                  source: 'rule_engine'
-                }
-              ])
-            }
+            onClick={() => {
+              setMessages([defaultGreeting]);
+              try {
+                localStorage.removeItem('vybe_chat_messages');
+              } catch {}
+            }}
             title="Reset conversation"
             className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors"
           >
@@ -155,7 +229,11 @@ export const ChatAssistantView: React.FC<ChatAssistantViewProps> = ({
                     : 'bg-slate-50 border border-slate-200/90 text-slate-800 rounded-tl-none shadow-sm'
                 }`}
               >
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                {isUser ? (
+                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                ) : (
+                  <div>{renderFormattedContent(msg.content)}</div>
+                )}
 
                 {/* Structured Suggested Actions / Activity Buttons */}
                 {!isUser && msg.suggested_actions && msg.suggested_actions.length > 0 && (
@@ -174,10 +252,10 @@ export const ChatAssistantView: React.FC<ChatAssistantViewProps> = ({
                 )}
 
                 {/* Source attribution badge */}
-                {!isUser && msg.source && (
+                {!isUser && (
                   <div className="mt-2 flex items-center gap-1 text-[9px] text-slate-400 font-mono">
                     <Cpu className="w-2.5 h-2.5" />
-                    <span>Engine: {msg.source === 'llm' ? 'Gemini 1.5 Flash' : 'Deterministic Rules'}</span>
+                    <span>Engine: Intelligent Rhythm Analysis & Adaptive Recommendations</span>
                   </div>
                 )}
               </div>
@@ -192,7 +270,7 @@ export const ChatAssistantView: React.FC<ChatAssistantViewProps> = ({
             </div>
             <div className="bg-slate-50 rounded-2xl p-3 border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-vybe-teal animate-bounce"></span>
-              <span>VYBE is thinking...</span>
+              <span>VYBE is reading your message and analyzing fatigue levels...</span>
             </div>
           </div>
         )}
@@ -202,8 +280,8 @@ export const ChatAssistantView: React.FC<ChatAssistantViewProps> = ({
 
       {/* Suggested Quick Prompt Chips */}
       <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/50 flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
-        <span className="font-bold text-slate-400 shrink-0 text-[10px] uppercase">Suggestions:</span>
-        {samplePrompts.slice(0, 4).map((p, idx) => (
+        <span className="font-bold text-slate-400 shrink-0 text-[10px] uppercase">Quick Inquiries:</span>
+        {samplePrompts.map((p, idx) => (
           <button
             key={idx}
             onClick={() => handleSend(p)}
@@ -227,7 +305,7 @@ export const ChatAssistantView: React.FC<ChatAssistantViewProps> = ({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask VYBE (e.g., 'I have 2 minutes before my next meeting')..."
+            placeholder={`Message VYBE (e.g., 'My eyes burn and neck is tight', 'I have 2 mins')...`}
             className="flex-1 py-3 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-vybe-teal text-xs text-slate-800 placeholder:text-slate-400"
           />
           <button
