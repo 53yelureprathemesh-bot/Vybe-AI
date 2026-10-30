@@ -1,0 +1,29 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 960 280' width='960' height='280'>
+  <defs>
+    <linearGradient id='iconGrad' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' stop-color='#14213D'/>
+      <stop offset='100%' stop-color='#14B8A6'/>
+    </linearGradient>
+    <filter id='fullShadow' x='-5%' y='-5%' width='110%' height='120%'>
+      <feDropShadow dx='0' dy='10' stdDeviation='15' flood-color='#14213D' flood-opacity='0.12'/>
+    </filter>
+  </defs>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&amp;display=swap');
+    .brand { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; font-weight: 800; font-size: 78px; fill: #14213D; letter-spacing: -2px; }
+    .badge-txt { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; font-weight: 800; font-size: 28px; fill: #0D9488; letter-spacing: 2px; }
+    .tagline { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; font-weight: 700; font-size: 22px; fill: #64748B; letter-spacing: 0.5px; }
+  </style>
+  <rect x='10' y='10' width='940' height='260' rx='36' fill='#FFFFFF' filter='url(#fullShadow)'/>
+  <g transform='translate(50, 45)'>
+    <rect width='150' height='150' rx='38' fill='url(#iconGrad)'/>
+    <g transform='translate(15, 15) scale(3.75)'>
+      <path d='M4 16C8 16 9 8 13 8C17 8 18 24 22 24C26 24 27 16 29 16' stroke='#DDF7EE' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/>
+      <circle cx='22' cy='11' r='2.8' fill='#2DD4BF'/>
+    </g>
+  </g>
+  <text x='240' y='135' class='brand'>VYBE</text>
+  <rect x='490' y='72' width='75' height='46' rx='14' fill='#DDF7EE' stroke='#14B8A6' stroke-width='1.5'/>
+  <text x='527' y='105' text-anchor='middle' class='badge-txt'>AI</text>
+  <text x='245' y='178' class='tagline'>Your Work. Your Wellness. Your Rhythm.</text>
+</svg>
