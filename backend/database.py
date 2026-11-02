@@ -11,6 +11,18 @@ from typing import List, Dict, Any, Optional
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "vybe_wellness.db")
 
+# In serverless environments (Vercel, AWS Lambda), filesystems are read-only except /tmp
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    tmp_db = "/tmp/vybe_wellness.db"
+    orig_db = DB_PATH
+    if os.path.exists(orig_db) and not os.path.exists(tmp_db):
+        import shutil
+        try:
+            shutil.copy2(orig_db, tmp_db)
+        except Exception:
+            pass
+    DB_PATH = tmp_db
+
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row

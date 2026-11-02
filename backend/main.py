@@ -88,6 +88,7 @@ def health_check():
 
 # 0. User Authentication & Onboarding
 @app.post("/api/auth/register", response_model=UserProfileResponse)
+@app.post("/auth/register", response_model=UserProfileResponse)
 def register(req: UserRegisterRequest):
     try:
         profile = register_user(
@@ -103,6 +104,7 @@ def register(req: UserRegisterRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/auth/login", response_model=UserProfileResponse)
+@app.post("/auth/login", response_model=UserProfileResponse)
 def login(req: UserLoginRequest):
     try:
         profile = login_user(req.email, req.password)
@@ -111,6 +113,7 @@ def login(req: UserLoginRequest):
         raise HTTPException(status_code=401, detail=str(e))
 
 @app.get("/api/auth/me", response_model=UserProfileResponse)
+@app.get("/auth/me", response_model=UserProfileResponse)
 def get_current_user(user_id: str = "default_user"):
     profile = get_user_profile(user_id)
     if not profile:

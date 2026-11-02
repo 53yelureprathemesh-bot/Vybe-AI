@@ -156,10 +156,14 @@ export const App: React.FC = () => {
     (window as any).__vybeOpenSoundStudio = (open: boolean = true) => {
       setIsSoundStudioOpen(open);
     };
+    (window as any).__vybeOpenAuth = (open: boolean = true) => {
+      setIsAuthModalOpen(open);
+    };
 
     return () => {
       delete (window as any).__vybeNavigate;
       delete (window as any).__vybeOpenSoundStudio;
+      delete (window as any).__vybeOpenAuth;
     };
   }, []);
 

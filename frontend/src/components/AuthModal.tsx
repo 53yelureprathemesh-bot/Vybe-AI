@@ -296,17 +296,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </form>
 
         {/* Demo Fast Login Helper */}
-        <div className="mt-4 pt-3 border-t border-slate-100 text-center">
+        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-2 text-center flex-wrap">
           <button
             type="button"
             onClick={async () => {
-              const defaultProfile = await api.getMe('default_user');
-              onLoginSuccess(defaultProfile);
+              const profile = await api.login({ email: '53yelureprathemesh@gmail.com', password: 'password123' });
+              onLoginSuccess(profile);
               onClose();
             }}
             className="text-[11px] font-semibold text-vybe-teal hover:underline"
           >
-            ⚡ Quick Demo Login as Default User
+            ⚡ Login as Prajakta Yelure
+          </button>
+          <span className="text-slate-300">·</span>
+          <button
+            type="button"
+            onClick={async () => {
+              const profile = await api.login({ email: 'demo@vybe.ai', password: 'password123' });
+              onLoginSuccess(profile);
+              onClose();
+            }}
+            className="text-[11px] font-semibold text-slate-500 hover:underline"
+          >
+            Demo User
           </button>
         </div>
       </div>
