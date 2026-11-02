@@ -31,6 +31,7 @@ wheels/
 # Recordings & Large Media
 demo_recording/
 demo_recording_prajakta/
+demo_recording_1min/
 *.pid
 *.log
 

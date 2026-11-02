@@ -155,6 +155,15 @@ export const ActivityPlayer: React.FC<ActivityPlayerProps> = ({
     onCompleted(activity.id);
   };
 
+  useEffect(() => {
+    (window as any).__vybeTriggerActivityComplete = () => {
+      handleActivityComplete();
+    };
+    return () => {
+      delete (window as any).__vybeTriggerActivityComplete;
+    };
+  }, [totalSeconds, activity.id]);
+
   // Submit Feedback
   const handleSubmitFeedback = async (rating: 'helpful' | 'okay' | 'not_helpful') => {
     setFeedbackRating(rating);

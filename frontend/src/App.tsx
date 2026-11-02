@@ -149,6 +149,18 @@ export const App: React.FC = () => {
     desktopNotification.onNotificationClick((activityId) => {
       handleStartActivity(activityId);
     });
+
+    (window as any).__vybeNavigate = (section: NavSection) => {
+      setCurrentSection(section);
+    };
+    (window as any).__vybeOpenSoundStudio = (open: boolean = true) => {
+      setIsSoundStudioOpen(open);
+    };
+
+    return () => {
+      delete (window as any).__vybeNavigate;
+      delete (window as any).__vybeOpenSoundStudio;
+    };
   }, []);
 
   useEffect(() => {
