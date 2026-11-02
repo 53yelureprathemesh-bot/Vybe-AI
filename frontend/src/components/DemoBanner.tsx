@@ -4,11 +4,12 @@ import { PlayCircle, RotateCcw, Database, Sparkles, Check } from 'lucide-react';
 import { api } from '../services/api';
 
 interface DemoBannerProps {
+  userId?: string;
   onLoadScenario: (scenario: WellnessCheckInInput, label: string) => void;
   onRefreshData: () => void;
 }
 
-export const DemoBanner: React.FC<DemoBannerProps> = ({ onLoadScenario, onRefreshData }) => {
+export const DemoBanner: React.FC<DemoBannerProps> = ({ userId, onLoadScenario, onRefreshData }) => {
   const [activeScenario, setActiveScenario] = useState<number | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -107,7 +108,7 @@ export const DemoBanner: React.FC<DemoBannerProps> = ({ onLoadScenario, onRefres
   const handleSeedDemoData = async () => {
     setLoading(true);
     try {
-      await api.seedDemo();
+      await api.seedDemo(userId || 'default_user');
       setStatusMsg('Seeded 7-day demo history into SQLite!');
       onRefreshData();
     } catch {
@@ -122,7 +123,7 @@ export const DemoBanner: React.FC<DemoBannerProps> = ({ onLoadScenario, onRefres
     if (!window.confirm('Reset all demo data and restore initial clean preferences?')) return;
     setLoading(true);
     try {
-      await api.resetDemo();
+      await api.resetDemo(userId || 'default_user');
       setActiveScenario(null);
       setStatusMsg('Demo data reset to clean state.');
       onRefreshData();

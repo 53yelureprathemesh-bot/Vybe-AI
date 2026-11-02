@@ -278,6 +278,7 @@ export const App: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* 1. Hackathon Live Demo Mode Bar */}
       <DemoBanner
+        userId={currentUser.user_id}
         onLoadScenario={handleLoadDemoScenario}
         onRefreshData={() => refreshData(currentUser.user_id)}
       />
@@ -338,6 +339,8 @@ export const App: React.FC = () => {
           {currentSection === 'checkin' && (
             <CheckInView
               initialValues={checkInDefaults}
+              user={currentUser}
+              currentRecommendation={recommendation}
               onRecommendationReceived={(rec) => setRecommendation(rec)}
               onStartActivity={handleStartActivity}
             />
@@ -358,7 +361,13 @@ export const App: React.FC = () => {
             <RelaxationZoneView onStartActivity={handleStartActivity} />
           )}
 
-          {currentSection === 'journey' && <JourneyAnalyticsView />}
+          {currentSection === 'journey' && (
+            <JourneyAnalyticsView
+              user={currentUser}
+              onStartActivity={handleStartActivity}
+              onNavigate={setCurrentSection}
+            />
+          )}
 
           {currentSection === 'settings' && <SettingsView />}
         </main>
@@ -368,6 +377,7 @@ export const App: React.FC = () => {
       {activeActivity && (
         <ActivityPlayer
           activity={activeActivity}
+          userId={currentUser.user_id}
           onClose={() => setActiveActivity(null)}
           onCompleted={handleActivityCompleted}
           onSelectNext={(nextId) => handleStartActivity(nextId)}

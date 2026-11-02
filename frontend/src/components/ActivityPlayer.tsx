@@ -6,6 +6,7 @@ import { api } from '../services/api';
 
 interface ActivityPlayerProps {
   activity: Activity;
+  userId?: string;
   onClose: () => void;
   onCompleted: (activityId: string) => void;
   onSelectNext?: (activityId: string) => void;
@@ -13,6 +14,7 @@ interface ActivityPlayerProps {
 
 export const ActivityPlayer: React.FC<ActivityPlayerProps> = ({
   activity,
+  userId,
   onClose,
   onCompleted,
   onSelectNext
@@ -117,7 +119,7 @@ export const ActivityPlayer: React.FC<ActivityPlayerProps> = ({
       // Record partial activity
       const now = new Date().toISOString();
       await api.recordActivity({
-        user_id: 'default_user',
+        user_id: userId || 'default_user',
         activity_id: activity.id,
         activity_name: activity.name,
         category: activity.category,
@@ -142,7 +144,7 @@ export const ActivityPlayer: React.FC<ActivityPlayerProps> = ({
 
     const now = new Date().toISOString();
     const res = await api.recordActivity({
-      user_id: 'default_user',
+      user_id: userId || 'default_user',
       activity_id: activity.id,
       activity_name: activity.name,
       category: activity.category,
@@ -168,7 +170,7 @@ export const ActivityPlayer: React.FC<ActivityPlayerProps> = ({
   const handleSubmitFeedback = async (rating: 'helpful' | 'okay' | 'not_helpful') => {
     setFeedbackRating(rating);
     await api.submitFeedback({
-      user_id: 'default_user',
+      user_id: userId || 'default_user',
       activity_id: activity.id,
       rating,
       want_similar: wantSimilar,

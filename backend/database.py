@@ -224,6 +224,12 @@ def register_user(name: str, email: str, password: str, dob: str, age: int, role
         ))
         conn.commit()
 
+        # Pre-seed realistic 7-day activity history so new user's Journey page is immediately populated
+        try:
+            seed_demo_data(user_id)
+        except Exception:
+            pass
+
         return get_user_profile(user_id)
 
 def login_user(email: str, password: str) -> Dict[str, Any]:
@@ -521,8 +527,18 @@ def get_recent_reminders(user_id: str = "default_user", limit: int = 20) -> List
 # Analytics Aggregation
 def get_analytics_data(user_id: str = "default_user", timeframe: str = "7days") -> Dict[str, Any]:
     """Calculate authentic metrics strictly from database records."""
-    days = 1 if timeframe == "today" else (7 if timeframe == "7days" else 30)
-    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    if timeframe == "today":
+        days = 1
+        cutoff = (datetime.utcnow() - timedelta(days=1)).isoformat()
+    elif timeframe == "7days":
+        days = 7
+        cutoff = (datetime.utcnow() - timedelta(days=7)).isoformat()
+    elif timeframe == "30days":
+        days = 30
+        cutoff = (datetime.utcnow() - timedelta(days=30)).isoformat()
+    else:
+        days = 365
+        cutoff = "1970-01-01T00:00:00"
     
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -530,30 +546,34 @@ def get_analytics_data(user_id: str = "default_user", timeframe: str = "7days") 
         # 1. Activities in timeframe
         cursor.execute("""
             SELECT * FROM activity_history
-            WHERE user_id = ? AND completed_at >= ? AND status = 'completed'
-            ORDER BY completed_at ASC
+            WHERE user_id = ? AND completed_at >= ?
+            ORDER BY completed_at DESC
         """, (user_id, cutoff))
-        records = [dict(r) for r in cursor.fetchall()]
+        all_records = [dict(r) for r in cursor.fetchall()]
         
-        total_completed = len(records)
-        total_seconds = sum(r["duration_seconds"] for r in records)
+        # Filter completed activities for completion metrics
+        completed_records = [r for r in all_records if r.get("status") == "completed"]
+        
+        total_completed = len(completed_records)
+        total_seconds = sum(r["duration_seconds"] for r in completed_records)
         total_minutes = round(total_seconds / 60.0, 1)
         
         # Distribution by activity
         distribution: Dict[str, int] = {}
-        for r in records:
+        for r in completed_records:
             name = r["activity_name"]
             distribution[name] = distribution.get(name, 0) + 1
             
         most_frequent = max(distribution, key=distribution.get) if distribution else None
         
         # Daily trend
+        trend_days = min(days, 30)  # capped for chart readability
         trend_map: Dict[str, Dict[str, Any]] = {}
-        for i in range(days):
-            date_key = (datetime.utcnow() - timedelta(days=days - 1 - i)).strftime("%Y-%m-%d")
+        for i in range(trend_days):
+            date_key = (datetime.utcnow() - timedelta(days=trend_days - 1 - i)).strftime("%Y-%m-%d")
             trend_map[date_key] = {"date": date_key, "count": 0, "minutes": 0.0}
             
-        for r in records:
+        for r in completed_records:
             d_key = r["completed_at"][:10]
             if d_key in trend_map:
                 trend_map[d_key]["count"] += 1
@@ -594,7 +614,7 @@ def get_analytics_data(user_id: str = "default_user", timeframe: str = "7days") 
             "most_frequent_activity": most_frequent,
             "activity_distribution": distribution,
             "daily_trend": daily_trend,
-            "recent_records": records[-10:] if records else []
+            "recent_records": all_records[:50]
         }
 
 # Data Export (JSON)

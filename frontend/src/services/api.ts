@@ -184,28 +184,61 @@ export const api = {
   async getHistory(userId = 'default_user', limit = 50): Promise<ActivityRecord[]> {
     try {
       const res = await fetch(`${API_BASE}/history?user_id=${userId}&limit=${limit}`);
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) return data;
+      }
     } catch (e) {
       console.warn('History fallback');
     }
     const saved = localStorage.getItem(`vybe_hist_${userId}`);
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+
+    // Fallback to default_user records if this user has no history yet
+    if (userId !== 'default_user') {
+      try {
+        const defaultRes = await fetch(`${API_BASE}/history?user_id=default_user&limit=${limit}`);
+        if (defaultRes.ok) {
+          const defaultData = await defaultRes.json();
+          if (Array.isArray(defaultData) && defaultData.length > 0) return defaultData;
+        }
+      } catch {}
+      const defaultSaved = localStorage.getItem('vybe_hist_default_user');
+      if (defaultSaved) {
+        try {
+          const defaultParsed = JSON.parse(defaultSaved);
+          if (Array.isArray(defaultParsed) && defaultParsed.length > 0) return defaultParsed;
+        } catch {}
+      }
+    }
+
+    return [];
   },
 
   async recordActivity(record: Omit<ActivityRecord, 'record_id'>): Promise<{ status: string; record_id: number }> {
+    const history = await this.getHistory(record.user_id);
+    const newRecord: ActivityRecord = { ...record, record_id: Date.now() };
     try {
       const res = await fetch(`${API_BASE}/history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(record)
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        // Keep local cache perfectly synchronized
+        localStorage.setItem(`vybe_hist_${record.user_id}`, JSON.stringify([newRecord, ...history.filter(h => h.record_id !== newRecord.record_id)]));
+        return data;
+      }
     } catch (e) {
       console.warn('Record save fallback');
     }
-    const history = await this.getHistory(record.user_id);
-    const newRecord = { ...record, record_id: Date.now() };
-    localStorage.setItem(`vybe_hist_${record.user_id}`, JSON.stringify([newRecord, ...history]));
+    localStorage.setItem(`vybe_hist_${record.user_id}`, JSON.stringify([newRecord, ...history.filter(h => h.record_id !== newRecord.record_id)]));
     return { status: 'success', record_id: newRecord.record_id };
   },
 
@@ -306,19 +339,81 @@ export const api = {
   async getAnalytics(userId = 'default_user', timeframe = '7days'): Promise<AnalyticsSummary> {
     try {
       const res = await fetch(`${API_BASE}/analytics?user_id=${userId}&timeframe=${timeframe}`);
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (data.total_completed_activities > 0 || (data.recent_records && data.recent_records.length > 0))) {
+          return data;
+        }
+      }
     } catch (e) {
       console.warn('Analytics fallback');
     }
+
+    // Client-side analytics calculation from local history records
+    const history: ActivityRecord[] = (await this.getHistory(userId)) || [];
+    const now = Date.now();
+    let msCutoff = 0;
+    if (timeframe === 'today') {
+      msCutoff = now - 24 * 60 * 60 * 1000;
+    } else if (timeframe === '7days') {
+      msCutoff = now - 7 * 24 * 60 * 60 * 1000;
+    } else if (timeframe === '30days') {
+      msCutoff = now - 30 * 24 * 60 * 60 * 1000;
+    } // 'all' keeps msCutoff = 0
+
+    const parseTime = (dateStr: string) => {
+      if (!dateStr) return 0;
+      const t = new Date(dateStr.includes(' ') && !dateStr.includes('T') ? dateStr.replace(' ', 'T') : dateStr).getTime();
+      return isNaN(t) ? 0 : t;
+    };
+
+    const filtered = msCutoff > 0
+      ? history.filter(r => parseTime(r.completed_at) >= msCutoff)
+      : history;
+
+    const completedOnly = filtered.filter(r => r.status === 'completed');
+    const totalCompleted = completedOnly.length;
+    const totalSeconds = completedOnly.reduce((acc, r) => acc + (r.duration_seconds || 0), 0);
+    const totalMinutes = Math.round((totalSeconds / 60) * 10) / 10;
+
+    const distribution: Record<string, number> = {};
+    completedOnly.forEach(r => {
+      distribution[r.activity_name] = (distribution[r.activity_name] || 0) + 1;
+    });
+
+    const numDays = timeframe === 'today' ? 1 : (timeframe === '7days' ? 7 : 30);
+    const dailyMap: Record<string, { count: number; minutes: number }> = {};
+    for (let i = 0; i < numDays; i++) {
+      const d = new Date(now - (numDays - 1 - i) * 86400000);
+      const dKey = d.toISOString().slice(0, 10);
+      dailyMap[dKey] = { count: 0, minutes: 0 };
+    }
+    completedOnly.forEach(r => {
+      const dKey = (r.completed_at || '').slice(0, 10);
+      if (dailyMap[dKey]) {
+        dailyMap[dKey].count += 1;
+        dailyMap[dKey].minutes += Math.round(((r.duration_seconds || 0) / 60) * 10) / 10;
+      }
+    });
+
+    const dailyTrend = Object.entries(dailyMap).map(([date, val]) => ({
+      date,
+      count: val.count,
+      minutes: val.minutes
+    }));
+
     return {
       timeframe: timeframe as any,
-      total_completed_activities: 0,
-      total_minutes_spent: 0,
+      total_completed_activities: totalCompleted,
+      total_minutes_spent: totalMinutes,
       reminder_acceptance_rate: 100,
       helpful_rate_percent: 100,
-      activity_distribution: {},
-      daily_trend: [],
-      recent_records: []
+      most_frequent_activity: Object.keys(distribution).length > 0
+        ? Object.entries(distribution).sort((a, b) => b[1] - a[1])[0][0]
+        : undefined,
+      activity_distribution: distribution,
+      daily_trend: dailyTrend,
+      recent_records: filtered
     };
   },
 
@@ -331,6 +426,18 @@ export const api = {
         if (data) return data;
       }
     } catch {}
+
+    // Seed realistic local records across the past 7 days
+    const demoRecords: ActivityRecord[] = [
+      { record_id: 101, user_id: userId, activity_id: 'eyecare', activity_name: 'EyeCare', category: 'eye_relaxation', duration_seconds: 20, started_at: new Date(Date.now() - 3600000 * 2).toISOString(), completed_at: new Date(Date.now() - 3600000 * 2).toISOString(), status: 'completed' },
+      { record_id: 102, user_id: userId, activity_id: 'deskyoga', activity_name: 'DeskYoga', category: 'movement', duration_seconds: 120, started_at: new Date(Date.now() - 3600000 * 5).toISOString(), completed_at: new Date(Date.now() - 3600000 * 5).toISOString(), status: 'completed' },
+      { record_id: 103, user_id: userId, activity_id: 'mindreset', activity_name: 'MindReset', category: 'breathing_relaxation', duration_seconds: 60, started_at: new Date(Date.now() - 86400000 * 1).toISOString(), completed_at: new Date(Date.now() - 86400000 * 1).toISOString(), status: 'completed' },
+      { record_id: 104, user_id: userId, activity_id: 'hydratemate', activity_name: 'HydrateMate', category: 'hydration', duration_seconds: 60, started_at: new Date(Date.now() - 86400000 * 2).toISOString(), completed_at: new Date(Date.now() - 86400000 * 2).toISOString(), status: 'completed' },
+      { record_id: 105, user_id: userId, activity_id: 'walkbreak', activity_name: 'WalkBreak', category: 'walking', duration_seconds: 300, started_at: new Date(Date.now() - 86400000 * 3).toISOString(), completed_at: new Date(Date.now() - 86400000 * 3).toISOString(), status: 'completed' },
+      { record_id: 106, user_id: userId, activity_id: 'eyecare', activity_name: 'EyeCare', category: 'eye_relaxation', duration_seconds: 20, started_at: new Date(Date.now() - 86400000 * 4).toISOString(), completed_at: new Date(Date.now() - 86400000 * 4).toISOString(), status: 'completed' },
+      { record_id: 107, user_id: userId, activity_id: 'deskyoga', activity_name: 'DeskYoga', category: 'movement', duration_seconds: 120, started_at: new Date(Date.now() - 86400000 * 5).toISOString(), completed_at: new Date(Date.now() - 86400000 * 5).toISOString(), status: 'completed' }
+    ];
+    localStorage.setItem(`vybe_hist_${userId}`, JSON.stringify(demoRecords));
     return { status: 'seeded', user_id: userId };
   },
 
@@ -783,19 +890,195 @@ export const defaultActivities: Activity[] = [
 ];
 
 function localFallbackRecommend(checkin: WellnessCheckInInput, exclude?: string): Recommendation {
-  const allowed = defaultActivities.filter(a => a.duration_seconds <= checkin.available_time_seconds && a.id !== exclude);
-  const selected = allowed.length > 0 ? allowed[0] : defaultActivities[0];
+  // 1. Filter candidates by available time and exclude ID
+  let candidates = defaultActivities.filter(a => {
+    if (exclude && a.id === exclude) return false;
+    if (a.duration_seconds > checkin.available_time_seconds) return false;
+    if (a.id === 'powernap') {
+      if (checkin.available_time_seconds < 600) return false;
+      if (checkin.preferred_activity_category !== 'quiet_rest' && checkin.mood !== 'tired' && checkin.mood !== 'low_energy') return false;
+    }
+    return true;
+  });
+
+  if (candidates.length === 0) {
+    candidates = defaultActivities.filter(a => a.duration_seconds <= checkin.available_time_seconds);
+  }
+  if (candidates.length === 0) {
+    candidates = [defaultActivities[0]]; // fallback to eyecare
+  }
+
+  // 2. Score candidates strictly according to the wellness check-in
+  const scored = candidates.map(act => {
+    let score = 5.0;
+    const reasons: string[] = [];
+
+    // Factor 1: Screen session trigger (Dominant optical strain factor)
+    if (checkin.screen_session_min >= 90) {
+      if (act.category === 'eye_relaxation') {
+        score += 10.0;
+        reasons.push(`High continuous screen session of ${checkin.screen_session_min} minutes calls for optical rest.`);
+      } else if (act.category === 'breathing_relaxation') {
+        score += 2.0;
+      }
+    } else if (checkin.screen_session_min >= 45) {
+      if (act.category === 'eye_relaxation') {
+        score += 6.0;
+        reasons.push(`Continuous screen session of ${checkin.screen_session_min} minutes calls for optical rest.`);
+      } else if (act.category === 'breathing_relaxation') {
+        score += 2.0;
+      }
+    } else if (checkin.screen_session_min >= 20) {
+      if (act.category === 'eye_relaxation') {
+        score += 3.5;
+        reasons.push(`Screen time of ${checkin.screen_session_min} minutes benefits from an optical break.`);
+      }
+    }
+
+    // Factor 2: Prolonged sitting trigger (Physical immobility factor)
+    if (checkin.sitting_duration_min >= 90) {
+      if (act.category === 'movement' || act.category === 'walking') {
+        score += 10.0;
+        reasons.push(`Extended sitting for ${checkin.sitting_duration_min} minutes warrants active mobility or walking.`);
+      } else if (act.category === 'hydration') {
+        score += 2.0;
+      }
+    } else if (checkin.sitting_duration_min >= 45) {
+      if (act.category === 'movement' || act.category === 'walking') {
+        score += 6.0;
+        reasons.push(`Sitting continuously for ${checkin.sitting_duration_min} minutes warrants physical movement.`);
+      } else if (act.category === 'hydration') {
+        score += 2.0;
+      }
+    } else if (checkin.sitting_duration_min >= 20) {
+      if (act.category === 'movement' || act.category === 'walking') {
+        score += 3.5;
+        reasons.push(`Sitting for ${checkin.sitting_duration_min} minutes is relieved by gentle stretching.`);
+      }
+    }
+
+    // Factor 3: Mood & Emotional state
+    if (checkin.mood === 'stressed') {
+      if (act.category === 'breathing_relaxation') {
+        score += 10.0;
+        reasons.push('Reported stress is best balanced with a calming breathing cycle.');
+      } else if (act.category === 'movement') {
+        score += 2.0;
+        reasons.push('Gentle mobility releases physical tension built up during stress.');
+      }
+    } else if (checkin.mood === 'tired' || checkin.mood === 'low_energy' || checkin.energy === 'low') {
+      if (act.category === 'walking') {
+        score += 6.5;
+        reasons.push('A brief walk naturally boosts alertness and circulation.');
+      } else if (act.category === 'hydration') {
+        score += 5.5;
+        reasons.push('Hydration helps combat fatigue and midday energy slumps.');
+      } else if (act.category === 'quiet_rest' && checkin.available_time_seconds >= 600) {
+        score += 6.5;
+        reasons.push('Sufficient time is available for a restorative power nap.');
+      } else if (act.category === 'eye_relaxation') {
+        score += 2.5;
+      }
+    } else if (checkin.mood === 'feeling_good') {
+      if (act.category === 'movement' || act.category === 'walking') {
+        score += 4.5;
+        reasons.push('Keep your positive momentum with energizing posture mobility.');
+      } else if (act.category === 'hydration') {
+        score += 2.5;
+      }
+    }
+
+    // Factor 4: Energy level refinements
+    if (checkin.energy === 'high') {
+      if (act.category === 'walking' || act.category === 'movement') {
+        score += 3.5;
+      }
+    } else if (checkin.energy === 'low') {
+      if (act.category === 'hydration' || act.category === 'breathing_relaxation') {
+        score += 3.0;
+      }
+    }
+
+    // Factor 5: User explicit category preference
+    if (checkin.preferred_activity_category && checkin.preferred_activity_category !== 'let_ai_choose') {
+      if (act.category === checkin.preferred_activity_category) {
+        score += 10.0;
+        reasons.push(`Matches your requested preference for ${act.category.replace('_', ' ')}.`);
+      }
+    }
+
+    // Available time utilization bonus
+    const fitRatio = act.duration_seconds / Math.max(checkin.available_time_seconds, 1);
+    score += fitRatio * 0.5;
+
+    return { activity: act, score, reasons };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored[0];
+  const selected = top.activity;
+
+  const moodLabel = (checkin.mood || 'normal').replace('_', ' ');
+  const durLabel = selected.duration_seconds < 60 ? `${selected.duration_seconds}s` : `${Math.floor(selected.duration_seconds / 60)} min`;
+  
+  let explanation = '';
+  if (top.reasons.length > 0) {
+    explanation = `Based on your check-in (${moodLabel} mood, ${checkin.energy} energy, ${checkin.available_time_seconds}s break): ${top.reasons[0]} VYBE recommends ${selected.name}.`;
+  } else {
+    explanation = `Based on your check-in (${moodLabel} mood, ${checkin.energy} energy): VYBE selected ${selected.name} as an optimal ${durLabel} pause fitting your schedule.`;
+  }
+
+  // Generate alternatives list (multiple options)
+  const alternatives: Recommendation['alternatives'] = [];
+  for (let i = 1; i < scored.length; i++) {
+    const act = scored[i].activity;
+    const aDurLabel = act.duration_seconds < 60 ? `${act.duration_seconds}s` : `${Math.floor(act.duration_seconds / 60)} min`;
+    alternatives.push({
+      id: act.id,
+      name: act.name,
+      tagline: act.tagline,
+      duration_seconds: act.duration_seconds,
+      duration_label: aDurLabel,
+      category: act.category,
+      description: act.description,
+      reason: scored[i].reasons[0] || `A tailored ${act.name} session suited to your rhythm.`,
+      confidence_score: Math.min(Math.round((scored[i].score / 15.0) * 100) / 100, 0.95)
+    });
+  }
+
+  // Ensure at least 2 alternatives are offered from available activities
+  if (alternatives.length < 2) {
+    const existingIds = new Set([selected.id, ...alternatives.map(a => a.id)]);
+    for (const act of defaultActivities) {
+      if (!existingIds.has(act.id)) {
+        const aDurLabel = act.duration_seconds < 60 ? `${act.duration_seconds}s` : `${Math.floor(act.duration_seconds / 60)} min`;
+        alternatives.push({
+          id: act.id,
+          name: act.name,
+          tagline: act.tagline,
+          duration_seconds: act.duration_seconds,
+          duration_label: aDurLabel,
+          category: act.category,
+          description: act.description,
+          reason: `Alternative ${aDurLabel} option to complement your check-in.`,
+          confidence_score: 0.82
+        });
+        if (alternatives.length >= 3) break;
+      }
+    }
+  }
+
   return {
     activity_id: selected.id,
     activity_name: selected.name,
     tagline: selected.tagline,
     category: selected.category,
     duration_seconds: selected.duration_seconds,
-    duration_label: `${selected.duration_seconds}s`,
+    duration_label: durLabel,
     description: selected.description,
-    reason: `Selected for your available time window.`,
-    confidence_score: 0.9,
-    alternatives: [],
+    reason: explanation,
+    confidence_score: Math.min(Math.round((top.score / 15.0) * 100) / 100, 0.98),
+    alternatives: alternatives.slice(0, 3),
     action_type: checkin.reminder_mode === 'immediate' ? 'immediate' : 'scheduled',
     source: 'rule_engine'
   };

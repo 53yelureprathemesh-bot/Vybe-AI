@@ -92,68 +92,105 @@ class RecommendationEngine:
             score = 5.0  # Base score
             reasons = []
 
-            # Factor 1: Screen session trigger
-            if checkin.screen_session_min >= 45:
+            # Factor 1: Screen session trigger (Dominant optical strain factor)
+            if checkin.screen_session_min >= 90:
                 if act["category"] == "eye_relaxation":
-                    score += 4.5
+                    score += 10.0
+                    reasons.append(f"High continuous screen session of {checkin.screen_session_min} minutes calls for optical rest.")
+                elif act["category"] == "breathing_relaxation":
+                    score += 2.0
+            elif checkin.screen_session_min >= 45:
+                if act["category"] == "eye_relaxation":
+                    score += 6.0
                     reasons.append(f"Continuous screen session of {checkin.screen_session_min} minutes calls for optical rest.")
                 elif act["category"] == "breathing_relaxation":
-                    score += 1.5
+                    score += 2.0
+            elif checkin.screen_session_min >= 20:
+                if act["category"] == "eye_relaxation":
+                    score += 3.5
+                    reasons.append(f"Screen time of {checkin.screen_session_min} minutes benefits from a quick visual reset.")
 
-            # Factor 2: Prolonged sitting trigger
-            if checkin.sitting_duration_min >= 50:
+            # Factor 2: Prolonged sitting trigger (Physical immobility factor)
+            if checkin.sitting_duration_min >= 90:
                 if act["category"] in ["movement", "walking"]:
-                    score += 4.5
+                    score += 10.0
+                    reasons.append(f"Extended sitting for {checkin.sitting_duration_min} minutes warrants active mobility or walking.")
+                elif act["category"] == "hydration":
+                    score += 2.0
+            elif checkin.sitting_duration_min >= 45:
+                if act["category"] in ["movement", "walking"]:
+                    score += 6.0
                     reasons.append(f"Sitting continuously for {checkin.sitting_duration_min} minutes warrants physical movement.")
                 elif act["category"] == "hydration":
-                    score += 1.5
+                    score += 2.0
+            elif checkin.sitting_duration_min >= 20:
+                if act["category"] in ["movement", "walking"]:
+                    score += 3.5
+                    reasons.append(f"Sitting for {checkin.sitting_duration_min} minutes is relieved by gentle stretching.")
 
             # Factor 3: Mood & Emotional state
             if checkin.mood == "stressed":
                 if act["category"] == "breathing_relaxation":
-                    score += 5.0
+                    score += 10.0
                     reasons.append("Reported stress is best balanced with a calming breathing cycle.")
                 elif act["category"] == "movement":
                     score += 2.0
+                    reasons.append("Gentle mobility releases physical tension built up during high stress.")
             elif checkin.mood in ["tired", "low_energy"] or checkin.energy == "low":
                 if act["category"] == "walking":
-                    score += 4.0
+                    score += 6.5
                     reasons.append("A brief walk naturally boosts alertness and circulation.")
                 elif act["category"] == "hydration":
-                    score += 3.0
-                    reasons.append("Hydration helps combat fatigue and energy slumps.")
+                    score += 5.5
+                    reasons.append("Hydration helps combat fatigue and midday energy slumps.")
                 elif act["category"] == "quiet_rest" and checkin.available_time_seconds >= 600:
-                    score += 4.0
+                    score += 6.5
                     reasons.append("Sufficient time is available for a restorative power nap.")
+                elif act["category"] == "eye_relaxation":
+                    score += 2.5
+            elif checkin.mood == "feeling_good":
+                if act["category"] in ["movement", "walking"]:
+                    score += 4.5
+                    reasons.append("Keep your positive momentum with energizing posture mobility.")
+                elif act["category"] == "hydration":
+                    score += 2.5
 
-            # Factor 4: User explicit category preference
+            # Factor 4: Energy level refinements
+            if checkin.energy == "high":
+                if act["category"] in ["walking", "movement"]:
+                    score += 3.5
+            elif checkin.energy == "low":
+                if act["category"] in ["hydration", "breathing_relaxation"]:
+                    score += 3.0
+
+            # Factor 5: User explicit category preference
             if checkin.preferred_activity_category and checkin.preferred_activity_category != "let_ai_choose":
                 if act["category"] == checkin.preferred_activity_category:
-                    score += 6.0
+                    score += 10.0
                     reasons.append(f"Matches your requested preference for {act['category'].replace('_', ' ')}.")
 
-            # Factor 5: User favorites
+            # Factor 6: User favorites
             if act_id in favorite_activities:
-                score += 1.5
+                score += 1.0
 
-            # Factor 6: Historical feedback learning (LEARN)
+            # Factor 7: Historical feedback learning (LEARN)
             stats = feedback_stats.get(act_id, {})
             helpful_count = stats.get("helpful", 0)
             not_helpful_count = stats.get("not_helpful", 0)
             if helpful_count > 0:
-                score += min(helpful_count * 0.8, 3.0)
+                score += min(helpful_count * 0.5, 2.0)
             if not_helpful_count > 0:
                 score -= not_helpful_count * 1.5
 
-            # Factor 7: Recency penalty (Avoid back-to-back repetitions)
+            # Factor 8: Recency penalty (Avoid back-to-back repetitions)
             if recent_activity_ids and act_id == recent_activity_ids[0]:
                 score -= 3.0  # Penalize the most recently completed activity
             elif act_id in recent_activity_ids:
                 score -= 1.5
 
-            # Available time utilization bonus (prefer activities that use a healthy portion of available time)
+            # Available time utilization bonus
             fit_ratio = act["duration_seconds"] / max(checkin.available_time_seconds, 1)
-            score += fit_ratio * 1.0
+            score += fit_ratio * 0.5
 
             scored_candidates.append({
                 "activity": act,
@@ -166,30 +203,59 @@ class RecommendationEngine:
         top_pick = scored_candidates[0]
         selected_act = top_pick["activity"]
         
-        # Build synthesis reason
+        # Build synthesis reason tailored to the check-in
+        mood_label = checkin.mood.replace("_", " ")
         if top_pick["reasons"]:
             primary_reason = top_pick["reasons"][0]
-            explanation = f"You selected a {self._format_duration(checkin.available_time_seconds)} break. {primary_reason} VYBE recommends {selected_act['name']}."
+            explanation = f"Based on your check-in ({mood_label} mood, {checkin.energy} energy, {checkin.available_time_seconds}s break): {primary_reason} VYBE recommends {selected_act['name']}."
         else:
-            explanation = f"VYBE selected {selected_act['name']} as a comfortable {self._format_duration(selected_act['duration_seconds'])} pause fitting your schedule."
+            explanation = f"Based on your check-in ({mood_label} mood, {checkin.energy} energy): VYBE selected {selected_act['name']} as an optimal {self._format_duration(selected_act['duration_seconds'])} pause fitting your schedule."
 
-        # Alternatives for "Choose Another"
-        alternatives = [
-            {
-                "id": c["activity"]["id"],
-                "name": c["activity"]["name"],
-                "duration_seconds": c["activity"]["duration_seconds"],
-                "category": c["activity"]["category"],
-                "description": c["activity"]["description"]
-            }
-            for c in scored_candidates[1:4]
-        ]
+        # Alternatives for multiple suggestions
+        alternatives = []
+        for c in scored_candidates[1:]:
+            act_item = c["activity"]
+            alt_reason = c["reasons"][0] if c["reasons"] else f"A tailored {act_item['name']} session suited to your current rhythm."
+            dur = act_item["duration_seconds"]
+            dur_label = f"{dur}s" if dur < 60 else f"{dur // 60} min"
+            alternatives.append({
+                "id": act_item["id"],
+                "name": act_item["name"],
+                "tagline": act_item.get("tagline", ""),
+                "duration_seconds": dur,
+                "duration_label": dur_label,
+                "category": act_item["category"],
+                "description": act_item["description"],
+                "reason": alt_reason,
+                "confidence_score": min(round(c["score"] / 15.0, 2), 0.95)
+            })
+
+        # Ensure at least 2 alternative options are presented if available in library
+        if len(alternatives) < 2:
+            existing_ids = {selected_act["id"]}.union({a["id"] for a in alternatives})
+            for act_extra in self.activities:
+                if act_extra["id"] not in existing_ids and act_extra["id"] not in disabled_activities:
+                    dur = act_extra["duration_seconds"]
+                    dur_label = f"{dur}s" if dur < 60 else f"{dur // 60} min"
+                    alternatives.append({
+                        "id": act_extra["id"],
+                        "name": act_extra["name"],
+                        "tagline": act_extra.get("tagline", ""),
+                        "duration_seconds": dur,
+                        "duration_label": dur_label,
+                        "category": act_extra["category"],
+                        "description": act_extra["description"],
+                        "reason": f"Alternative {dur_label} option to complement your check-in.",
+                        "confidence_score": 0.82
+                    })
+                    if len(alternatives) >= 3:
+                        break
 
         return self._build_response(
             activity=selected_act,
             reason=explanation,
             confidence=min(round(top_pick["score"] / 15.0, 2), 0.98),
-            alternatives=alternatives,
+            alternatives=alternatives[:3],
             action_type=checkin.reminder_mode
         )
 

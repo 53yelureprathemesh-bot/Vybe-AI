@@ -76,9 +76,13 @@ export interface Recommendation {
   alternatives: Array<{
     id: string;
     name: string;
+    tagline?: string;
     duration_seconds: number;
+    duration_label?: string;
     category: string;
     description: string;
+    reason?: string;
+    confidence_score?: number;
   }>;
   action_type: 'immediate' | 'scheduled';
   source: 'rule_engine' | 'llm';
@@ -132,7 +136,7 @@ export interface WorkdayPlan {
 }
 
 export interface AnalyticsSummary {
-  timeframe: 'today' | '7days' | '30days';
+  timeframe: 'today' | '7days' | '30days' | 'all';
   total_completed_activities: number;
   total_minutes_spent: number;
   reminder_acceptance_rate: number;

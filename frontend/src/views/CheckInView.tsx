@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { WellnessCheckInInput, Recommendation } from '../types';
+import { WellnessCheckInInput, Recommendation, UserProfile } from '../types';
 import {
   Sparkles,
   Clock,
@@ -11,18 +11,29 @@ import {
   Play,
   ArrowRight,
   ShieldCheck,
-  Check
+  Check,
+  CheckCircle,
+  Eye,
+  Activity as ActivityIcon,
+  Heart,
+  Footprints,
+  Droplets,
+  Moon
 } from 'lucide-react';
 import { api } from '../services/api';
 
 interface CheckInViewProps {
   initialValues?: WellnessCheckInInput | null;
+  user?: UserProfile;
+  currentRecommendation?: Recommendation | null;
   onRecommendationReceived: (rec: Recommendation) => void;
   onStartActivity: (activityId: string) => void;
 }
 
 export const CheckInView: React.FC<CheckInViewProps> = ({
   initialValues,
+  user,
+  currentRecommendation,
   onRecommendationReceived,
   onStartActivity
 }) => {
@@ -35,14 +46,41 @@ export const CheckInView: React.FC<CheckInViewProps> = ({
   const [reminderMode, setReminderMode] = useState<'immediate' | 'reminder'>(initialValues?.reminder_mode ?? 'immediate');
 
   const [loading, setLoading] = useState<boolean>(false);
-  const [result, setResult] = useState<Recommendation | null>(null);
+  const [result, setResult] = useState<Recommendation | null>(currentRecommendation || null);
+  const resultRef = React.useRef<HTMLDivElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const payload: WellnessCheckInInput = {
-        user_id: 'default_user',
+  // Sync state if currentRecommendation changes
+  React.useEffect(() => {
+    if (currentRecommendation) {
+      setResult(currentRecommendation);
+    }
+  }, [currentRecommendation]);
+
+  // Sync form inputs and auto-generate recommendations when opened or when scenario is loaded
+  React.useEffect(() => {
+    if (initialValues) {
+      if (initialValues.screen_session_min !== undefined) setScreenMin(initialValues.screen_session_min);
+      if (initialValues.sitting_duration_min !== undefined) setSittingMin(initialValues.sitting_duration_min);
+      if (initialValues.mood) setMood(initialValues.mood);
+      if (initialValues.energy) setEnergy(initialValues.energy);
+      if (initialValues.available_time_seconds !== undefined) setAvailableTime(initialValues.available_time_seconds);
+      if (initialValues.preferred_activity_category) setPreference(initialValues.preferred_activity_category);
+      if (initialValues.reminder_mode) setReminderMode(initialValues.reminder_mode);
+
+      evaluateRecommendation({
+        user_id: user?.user_id || 'default_user',
+        screen_session_min: initialValues.screen_session_min ?? screenMin,
+        sitting_duration_min: initialValues.sitting_duration_min ?? sittingMin,
+        mood: initialValues.mood ?? mood,
+        energy: initialValues.energy ?? energy,
+        available_time_seconds: initialValues.available_time_seconds ?? availableTime,
+        preferred_activity_category: initialValues.preferred_activity_category ?? preference,
+        reminder_mode: initialValues.reminder_mode ?? reminderMode
+      }, false);
+    } else if (!result && !currentRecommendation) {
+      // Evaluate default initial recommendations so the user has immediate options
+      evaluateRecommendation({
+        user_id: user?.user_id || 'default_user',
         screen_session_min: screenMin,
         sitting_duration_min: sittingMin,
         mood,
@@ -50,15 +88,80 @@ export const CheckInView: React.FC<CheckInViewProps> = ({
         available_time_seconds: availableTime,
         preferred_activity_category: preference,
         reminder_mode: reminderMode
-      };
+      }, false);
+    }
+  }, [initialValues]);
+
+  const evaluateRecommendation = async (payload: WellnessCheckInInput, shouldScroll = true) => {
+    setLoading(true);
+    try {
       const rec = await api.getRecommendation(payload);
       setResult(rec);
       onRecommendationReceived(rec);
+      if (shouldScroll) {
+        setTimeout(() => {
+          resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 120);
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload: WellnessCheckInInput = {
+      user_id: user?.user_id || 'default_user',
+      screen_session_min: screenMin,
+      sitting_duration_min: sittingMin,
+      mood,
+      energy,
+      available_time_seconds: availableTime,
+      preferred_activity_category: preference,
+      reminder_mode: reminderMode
+    };
+    await evaluateRecommendation(payload, true);
+  };
+
+  const handleSelectAlternative = async (alt: Recommendation['alternatives'][0]) => {
+    const act = await api.getActivity(alt.id);
+    const prevResult = result;
+    const newRec: Recommendation = {
+      activity_id: alt.id,
+      activity_name: alt.name,
+      tagline: alt.tagline || act?.tagline || '',
+      category: alt.category,
+      duration_seconds: alt.duration_seconds,
+      duration_label: alt.duration_label || (alt.duration_seconds < 60 ? `${alt.duration_seconds}s` : `${Math.floor(alt.duration_seconds / 60)} min`),
+      description: alt.description || act?.description || '',
+      reason: alt.reason || `Selected as an alternative option matching your check-in.`,
+      confidence_score: alt.confidence_score || 0.9,
+      alternatives: prevResult
+        ? [
+            {
+              id: prevResult.activity_id,
+              name: prevResult.activity_name,
+              tagline: prevResult.tagline,
+              duration_seconds: prevResult.duration_seconds,
+              duration_label: prevResult.duration_label,
+              category: prevResult.category,
+              description: prevResult.description,
+              reason: prevResult.reason,
+              confidence_score: prevResult.confidence_score
+            },
+            ...prevResult.alternatives.filter(a => a.id !== alt.id)
+          ]
+        : [],
+      action_type: reminderMode === 'immediate' ? 'immediate' : 'scheduled',
+      source: 'rule_engine'
+    };
+    setResult(newRec);
+    onRecommendationReceived(newRec);
+    setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   };
 
   const timeOptions = [
@@ -317,33 +420,122 @@ export const CheckInView: React.FC<CheckInViewProps> = ({
 
       {/* Recommendation Result Presentation */}
       {result && (
-        <div className="bg-gradient-to-br from-white to-vybe-mint/30 rounded-3xl p-6 md:p-8 border-2 border-vybe-teal shadow-xl animate-slide-up">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-vybe-teal bg-white px-2.5 py-1 rounded-full border border-vybe-teal/20">
-              VYBE Agent Decision
-            </span>
-            <span className="text-xs font-bold text-slate-500">
-              Fit: {result.duration_label} Window
-            </span>
+        <div ref={resultRef} className="space-y-6 animate-slide-up pt-4">
+          {/* 1. Primary Recommendation Card */}
+          <div className="bg-gradient-to-br from-white via-vybe-mint/20 to-teal-50 rounded-3xl p-6 md:p-8 border-2 border-vybe-teal shadow-xl">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-vybe-teal bg-white px-3 py-1 rounded-full border border-vybe-teal/20 flex items-center gap-1.5 shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5 text-vybe-teal" />
+                  Primary Recommendation
+                </span>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 capitalize">
+                  {result.category.replace('_', ' ')}
+                </span>
+              </div>
+              <span className="text-xs font-bold text-slate-600 bg-white/80 px-2.5 py-1 rounded-lg border border-slate-200">
+                Fit: {result.duration_label} Window
+              </span>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl sm:text-3xl font-black text-vybe-navy mb-1">{result.activity_name}</h3>
+                <p className="text-xs sm:text-sm font-medium text-vybe-slate mb-3">{result.tagline}</p>
+                <p className="text-xs text-slate-600 mb-4 max-w-2xl">{result.description}</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white/90 border border-teal-100 text-xs text-slate-700 leading-relaxed font-medium mb-6 shadow-sm">
+              <span className="font-bold text-vybe-navy">Why this fits your check-in: </span>
+              {result.reason}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => onStartActivity(result.activity_id)}
+                className="px-7 py-3 rounded-xl bg-vybe-teal hover:bg-vybe-teal-dark text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center gap-2"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span>Start {result.activity_name} Now ({result.duration_label})</span>
+              </button>
+            </div>
           </div>
 
-          <h3 className="text-2xl font-black text-vybe-navy mb-1">{result.activity_name}</h3>
-          <p className="text-xs text-vybe-slate mb-4">{result.tagline}</p>
+          {/* 2. Multiple Alternative Options Matched to Check-In */}
+          {result.alternatives && result.alternatives.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-base font-bold text-vybe-navy flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-vybe-teal" />
+                    <span>Alternative Options for Your Rhythm</span>
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Prefer a different focus? Select any option below as your active exercise or start it right away.
+                  </p>
+                </div>
+                <span className="text-xs font-semibold text-vybe-teal bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100">
+                  {result.alternatives.length} More Options
+                </span>
+              </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/90 text-xs text-slate-700 leading-relaxed font-medium mb-4">
-            <span className="font-bold text-vybe-navy">Reason: </span>
-            {result.reason}
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {result.alternatives.map((alt) => (
+                  <div
+                    key={alt.id}
+                    className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm hover:shadow-md hover:border-vybe-teal/60 transition-all flex flex-col justify-between group"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-[11px] font-bold text-vybe-teal capitalize bg-vybe-mint/40 px-2 py-0.5 rounded-md">
+                          {alt.category.replace('_', ' ')}
+                        </span>
+                        <span className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                          {alt.duration_label || (alt.duration_seconds < 60 ? `${alt.duration_seconds}s` : `${Math.floor(alt.duration_seconds / 60)}m`)}
+                        </span>
+                      </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => onStartActivity(result.activity_id)}
-              className="px-6 py-2.5 rounded-xl bg-vybe-teal hover:bg-vybe-teal-dark text-white font-bold text-xs shadow transition-all active:scale-95 flex items-center gap-2"
-            >
-              <Play className="w-4 h-4 fill-white" />
-              <span>Start {result.activity_name} Now</span>
-            </button>
-          </div>
+                      <h5 className="text-base font-bold text-vybe-navy group-hover:text-vybe-teal transition-colors">
+                        {alt.name}
+                      </h5>
+                      {alt.tagline && (
+                        <p className="text-[11px] text-slate-400 font-medium mb-2">{alt.tagline}</p>
+                      )}
+                      <p className="text-xs text-slate-600 line-clamp-2 mb-3">
+                        {alt.description}
+                      </p>
+
+                      {alt.reason && (
+                        <p className="text-[11px] text-slate-500 italic bg-slate-50 p-2 rounded-lg border border-slate-100 mb-3">
+                          {alt.reason}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-3 border-t border-slate-100 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAlternative(alt)}
+                        className="flex-1 py-2 px-3 rounded-lg border border-vybe-teal text-vybe-teal hover:bg-vybe-mint/30 font-bold text-xs transition-all text-center flex items-center justify-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Select Option</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onStartActivity(alt.id)}
+                        className="py-2 px-3 rounded-lg bg-vybe-navy hover:bg-slate-800 text-white font-bold text-xs transition-all flex items-center justify-center gap-1"
+                        title="Start immediately"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-white" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
