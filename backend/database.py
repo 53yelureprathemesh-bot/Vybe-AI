@@ -599,6 +599,7 @@ def get_analytics_data(user_id: str = "default_user", timeframe: str = "7days") 
 
 # Data Export (JSON)
 def export_user_data(user_id: str = "default_user") -> Dict[str, Any]:
+    user_prof = get_user_profile(user_id)
     prefs = get_user_preferences(user_id)
     history = get_activity_history(user_id, limit=500)
     with get_connection() as conn:
@@ -611,6 +612,7 @@ def export_user_data(user_id: str = "default_user") -> Dict[str, Any]:
     return {
         "export_date": datetime.utcnow().isoformat(),
         "user_id": user_id,
+        "user": user_prof,
         "preferences": prefs,
         "activity_history": history,
         "feedback": feedback,
